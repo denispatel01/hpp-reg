@@ -137,16 +137,39 @@ var CACHE_KEY = 'devoteesCache_v1', CACHE_AT = 'devoteesCacheAt_v1';
 function toast(msg){ toastEl.textContent=msg; toastEl.classList.add('show');
   clearTimeout(toast._t); toast._t=setTimeout(function(){toastEl.classList.remove('show');},1800); }
 
+function delay(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
 function api(params){
   var url = LS.api;
   if(!url || url.indexOf('http')!==0) return Promise.reject(new Error('No API link set. Tap the gear icon to add it.'));
   params.pin = LS.pin;
-  return fetch(url, {
-    method:'POST',
-    headers:{'Content-Type':'text/plain;charset=utf-8'}, // simple request -> no CORS preflight
-    body: JSON.stringify(params),
-    redirect:'follow'
-  }).then(function(r){ return r.json(); }).then(function(d){
+  var body = JSON.stringify(params);
+  var MAX = 4; // total attempts
+
+  function attempt(n){
+    return fetch(url, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'}, // simple request -> no CORS preflight
+      body: body,
+      redirect:'follow'
+    }).then(function(r){ return r.text(); }).then(function(t){
+      var d;
+      try { d = JSON.parse(t); }
+      catch(e){
+        // Google Apps Script sometimes returns an HTML wrapper instead of JSON.
+        if(n < MAX) return delay(500*n).then(function(){ return attempt(n+1); });
+        throw new Error('Server busy - please try again');
+      }
+      return d;
+    }).catch(function(err){
+      // Network/transient error -> retry (register/mark actions are idempotent, so safe).
+      if(n < MAX && !/please try again/.test(err.message))
+        return delay(500*n).then(function(){ return attempt(n+1); });
+      throw err;
+    });
+  }
+
+  return attempt(1).then(function(d){
     if(d && d.needPin){ toast('Enter the correct access code'); openSettings(); }
     return d;
   });
