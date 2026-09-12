@@ -22,16 +22,20 @@
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
   body{padding-bottom:24px}
   header{position:sticky;top:0;z-index:5;background:var(--brand);color:#fff;
-    padding:calc(env(safe-area-inset-top) + 12px) 14px 12px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+    padding:calc(env(safe-area-inset-top) + 12px) 14px 10px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
   .h-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
   h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px}
   .stats{font-size:12px;opacity:.95;margin-top:2px}
   .stats b{font-weight:700}
   .gear{background:rgba(255,255,255,.18);border:none;color:#fff;font-size:18px;
     width:36px;height:36px;border-radius:9px}
+  .evbar{margin-top:10px;display:flex;align-items:center;gap:8px}
+  .evbar select{flex:1;font-size:15px;font-weight:600;padding:9px 10px;border-radius:10px;
+    border:none;background:#fff;color:var(--ink)}
+  .evtag{font-size:11px;font-weight:700;padding:4px 8px;border-radius:20px;background:rgba(255,255,255,.2);white-space:nowrap}
+  .closed{background:#7a2d0c}
   .search-wrap{padding:12px 14px 6px}
-  .search{display:flex;gap:8px}
-  input[type=search],input[type=text]{flex:1;width:100%;font-size:16px;padding:12px 14px;
+  input[type=search],input[type=text],input[type=date]{width:100%;font-size:16px;padding:12px 14px;
     border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
   input:focus{outline:2px solid var(--brand);border-color:var(--brand)}
   .hint{color:var(--muted);font-size:12px;padding:2px 16px 8px}
@@ -59,22 +63,27 @@
   .actions{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:8px}
   button.act{flex:1;font-size:14px;font-weight:700;padding:11px;border-radius:11px;border:none}
   .act-all{background:var(--brand);color:#fff}
-  .act-undo{background:#f0ebe1;color:var(--ink)}
   .empty,.load{text-align:center;color:var(--muted);padding:40px 20px;font-size:15px}
   .err{background:#fdecec;color:#b3261e;margin:10px 14px;padding:10px 12px;border-radius:10px;font-size:13px}
   .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#2a2118;
-    color:#fff;padding:11px 16px;border-radius:24px;font-size:14px;opacity:0;transition:.2s;z-index:20;
+    color:#fff;padding:11px 16px;border-radius:24px;font-size:14px;opacity:0;transition:.2s;z-index:40;
     pointer-events:none;max-width:90%;text-align:center}
   .toast.show{opacity:.96}
-  dialog{border:none;border-radius:16px;padding:0;width:88%;max-width:360px}
+  dialog{border:none;border-radius:16px;padding:0;width:90%;max-width:380px}
   dialog::backdrop{background:rgba(0,0,0,.4)}
-  .dlg-in{padding:18px}
+  .dlg-in{padding:18px;max-height:80vh;overflow:auto}
   .dlg-in h3{margin:0 0 8px}
   .dlg-in p{color:var(--muted);font-size:13px;margin:0 0 12px}
   .dlg-in label{font-size:13px;font-weight:600;display:block;margin:10px 0 4px}
   .dlg-btns{display:flex;gap:8px;margin-top:14px}
   .dlg-btns button{flex:1;padding:11px;border-radius:10px;border:none;font-weight:700;font-size:14px}
   .primary{background:var(--brand);color:#fff}.ghost{background:#eee;color:#333}
+  .linkbtn{background:none;border:none;color:var(--brand);font-weight:700;font-size:14px;padding:8px 0;text-decoration:underline}
+  .evrow{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .evrow .en{flex:1;min-width:0}
+  .evrow .en b{display:block}.evrow .en span{font-size:12px;color:var(--muted)}
+  .tgl{border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700}
+  .tgl.open{background:var(--ok-bg);color:var(--ok)}.tgl.closed{background:#fdecec;color:#b3261e}
 </style>
 </head>
 <body>
@@ -85,16 +94,18 @@
       <div class="stats" id="stats">Loading...</div>
     </div>
     <div style="display:flex;gap:6px">
-      <button class="gear" id="refresh" title="Refresh data">&#8635;</button>
+      <button class="gear" id="refresh" title="Refresh">&#8635;</button>
       <button class="gear" id="gear" title="Settings">&#9881;</button>
     </div>
+  </div>
+  <div class="evbar">
+    <select id="eventSel"></select>
+    <span class="evtag" id="evStatus" hidden></span>
   </div>
 </header>
 
 <div class="search-wrap">
-  <div class="search">
-    <input id="q" type="search" inputmode="search" placeholder="Search name or mobile..." autocomplete="off">
-  </div>
+  <input id="q" type="search" inputmode="search" placeholder="Search name or mobile..." autocomplete="off">
 </div>
 <div class="hint" id="who"></div>
 
@@ -102,19 +113,40 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- Settings -->
 <dialog id="settings">
   <div class="dlg-in">
     <h3>Settings</h3>
-    <p>Set your name (saved with each registration) and the data link.</p>
+    <p>Your name is saved with each registration.</p>
     <label>Your name (Sevak)</label>
     <input type="text" id="sevakName" placeholder="e.g. Digeshbhai">
     <label>Access code (from admin)</label>
     <input type="text" id="pinCode" inputmode="numeric" placeholder="Enter access code">
+    <label>Admin code (optional)</label>
+    <input type="text" id="adminCode" inputmode="numeric" placeholder="Only for managing events">
     <label>API link (from admin)</label>
     <input type="text" id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <button class="linkbtn" id="manageEventsBtn">Manage events (admin)</button>
     <div class="dlg-btns">
       <button class="ghost" id="cancelSet">Cancel</button>
       <button class="primary" id="saveSet">Save</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Manage events (admin) -->
+<dialog id="eventsDlg">
+  <div class="dlg-in">
+    <h3>Manage events</h3>
+    <p>Open events accept registrations. Closed events are view-only.</p>
+    <div id="evList"></div>
+    <label>New event name</label>
+    <input type="text" id="newEvName" placeholder="e.g. Diwali Annakut">
+    <label>Date</label>
+    <input type="date" id="newEvDate">
+    <div class="dlg-btns">
+      <button class="ghost" id="evClose">Close</button>
+      <button class="primary" id="evAdd">Add event</button>
     </div>
   </div>
 </dialog>
@@ -127,94 +159,88 @@ var DEFAULT_API = "https://script.google.com/macros/s/AKfycbwKEthsT2AHxZgKUQlOE-
 var LS = {
   get api(){ var v=localStorage.getItem('apiUrl'); return (v&&v.indexOf('http')===0)?v:DEFAULT_API; },
   set api(v){ localStorage.setItem('apiUrl', v||''); },
-  get sevak(){ return localStorage.getItem('sevak')||''; },
-  set sevak(v){ localStorage.setItem('sevak', v||''); },
-  get pin(){ return localStorage.getItem('pin')||''; },
-  set pin(v){ localStorage.setItem('pin', v||''); }
+  get sevak(){ return localStorage.getItem('sevak')||''; },  set sevak(v){ localStorage.setItem('sevak', v||''); },
+  get pin(){ return localStorage.getItem('pin')||''; },      set pin(v){ localStorage.setItem('pin', v||''); },
+  get adminPin(){ return localStorage.getItem('adminPin')||''; }, set adminPin(v){ localStorage.setItem('adminPin', v||''); },
+  get event(){ return localStorage.getItem('event')||''; },  set event(v){ localStorage.setItem('event', v||''); }
 };
 
 var $ = function(s){ return document.querySelector(s); };
-var listEl = $('#list'), statsEl = $('#stats'), toastEl = $('#toast');
-
-// ---- In-memory data (loaded once, searched locally) ----
-var ROWS = [];            // flat list of all devotees
-var BY_SNO = {};          // sno -> row object
-var CACHE_KEY = 'devoteesCache_v1', CACHE_AT = 'devoteesCacheAt_v1';
+var listEl=$('#list'), statsEl=$('#stats'), toastEl=$('#toast');
+var ROWS=[], BY_SNO={}, EVENTS=[];
 
 function toast(msg){ toastEl.textContent=msg; toastEl.classList.add('show');
-  clearTimeout(toast._t); toast._t=setTimeout(function(){toastEl.classList.remove('show');},1800); }
-
-function delay(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+  clearTimeout(toast._t); toast._t=setTimeout(function(){toastEl.classList.remove('show');},2000); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function norm(s){ return String(s==null?'':s).toLowerCase().replace(/\s+/g,' ').trim(); }
+function delay(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
 
 function api(params){
-  var url = LS.api;
-  if(!url || url.indexOf('http')!==0) return Promise.reject(new Error('No API link set. Tap the gear icon to add it.'));
-  params.pin = LS.pin;
-  var body = JSON.stringify(params);
-  var MAX = 4; // total attempts
-
+  var url=LS.api;
+  if(!url||url.indexOf('http')!==0) return Promise.reject(new Error('No API link set. Tap the gear icon to add it.'));
+  params.pin=LS.pin; if(LS.adminPin) params.adminPin=LS.adminPin;
+  var body=JSON.stringify(params), MAX=4;
   function attempt(n){
-    return fetch(url, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'}, // simple request -> no CORS preflight
-      body: body,
-      redirect:'follow'
-    }).then(function(r){ return r.text(); }).then(function(t){
-      var d;
-      try { d = JSON.parse(t); }
-      catch(e){
-        // Google Apps Script sometimes returns an HTML wrapper instead of JSON.
-        if(n < MAX) return delay(500*n).then(function(){ return attempt(n+1); });
-        throw new Error('Server busy - please try again');
-      }
-      return d;
-    }).catch(function(err){
-      // Network/transient error -> retry (register/mark actions are idempotent, so safe).
-      if(n < MAX && !/please try again/.test(err.message))
-        return delay(500*n).then(function(){ return attempt(n+1); });
-      throw err;
-    });
+    return fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:body,redirect:'follow'})
+      .then(function(r){return r.text();}).then(function(t){
+        var d; try{ d=JSON.parse(t); }catch(e){
+          if(n<MAX) return delay(500*n).then(function(){return attempt(n+1);});
+          throw new Error('Server busy - please try again'); }
+        return d;
+      }).catch(function(err){
+        if(n<MAX && !/please try again/.test(err.message)) return delay(500*n).then(function(){return attempt(n+1);});
+        throw err; });
   }
-
   return attempt(1).then(function(d){
     if(d && d.needPin){ toast('Enter the correct access code'); openSettings(); }
     return d;
   });
 }
 
-function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
-  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+// ---- Events ----
+function curEvent(){ for(var i=0;i<EVENTS.length;i++) if(EVENTS[i].eventId===LS.event) return EVENTS[i]; return null; }
 
-// ---- Data loading / caching ----
-function indexRows(rows){
-  ROWS = rows || [];
-  BY_SNO = {};
-  ROWS.forEach(function(r){ BY_SNO[String(r.sno)] = r; });
+function loadEvents(){
+  return api({action:'events'}).then(function(d){
+    if(!d.ok) return d;
+    EVENTS=d.events||[];
+    var sel=$('#eventSel'); sel.innerHTML='';
+    EVENTS.forEach(function(e){
+      var o=document.createElement('option'); o.value=e.eventId;
+      o.textContent=e.name+(e.date?(' - '+e.date):'')+'  ('+e.registered+' reg)';
+      sel.appendChild(o);
+    });
+    if(!LS.event || !EVENTS.some(function(e){return e.eventId===LS.event;})){
+      var open=EVENTS.filter(function(e){return e.status==='open';})[0];
+      LS.event = open ? open.eventId : (EVENTS[0]&&EVENTS[0].eventId)||'';
+    }
+    sel.value=LS.event;
+    showEventStatus();
+    return d;
+  });
 }
 
-function loadFromCache(){
-  try {
-    var raw = localStorage.getItem(CACHE_KEY);
-    if(raw){ indexRows(JSON.parse(raw)); return true; }
-  } catch(e){}
-  return false;
+function showEventStatus(){
+  var e=curEvent(), tag=$('#evStatus');
+  if(!e){ tag.hidden=true; return; }
+  tag.hidden=false;
+  tag.textContent = e.status==='open' ? 'OPEN' : 'CLOSED';
+  tag.className = 'evtag' + (e.status==='open'?'':' closed');
 }
 
-function saveCache(){
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(ROWS));
-    localStorage.setItem(CACHE_AT, String(Date.now()));
-  } catch(e){}
-}
+// ---- Data (per event) ----
+function cacheKey(){ return 'cache_'+LS.event; }
+function indexRows(rows){ ROWS=rows||[]; BY_SNO={}; ROWS.forEach(function(r){ BY_SNO[String(r.sno)]=r; }); }
+function loadFromCache(){ try{ var raw=localStorage.getItem(cacheKey()); if(raw){ indexRows(JSON.parse(raw)); return true; } }catch(e){} indexRows([]); return false; }
+function saveCache(){ try{ localStorage.setItem(cacheKey(), JSON.stringify(ROWS)); }catch(e){} }
 
 function fetchAll(showToast){
-  var btn = $('#refresh'); if(btn) btn.style.opacity='.4';
-  return api({action:'all'}).then(function(d){
+  var btn=$('#refresh'); if(btn) btn.style.opacity='.4';
+  return api({action:'all', eventId:LS.event}).then(function(d){
     if(!d.ok) throw new Error(d.error||'Error');
-    indexRows(d.rows); saveCache();
-    updateStats();
-    if(lastQuery) doSearch(lastQuery);
-    if(showToast) toast('Data updated: '+d.count+' devotees');
+    indexRows(d.rows); saveCache(); updateStats(); if(lastQuery) doSearch(lastQuery);
+    if(showToast) toast('Updated: '+d.count+' devotees');
   }).catch(function(e){
     if(showToast) toast('Update failed: '+e.message);
     else if(!ROWS.length) statsEl.textContent='Offline - tap refresh when online';
@@ -222,147 +248,168 @@ function fetchAll(showToast){
 }
 
 function updateStats(){
-  if(!ROWS.length){ statsEl.textContent='No data yet - tap refresh'; return; }
-  var reg=0, fam={}, famTouched={};
-  ROWS.forEach(function(r){ fam[r.familyId]=1; if(r.registered){reg++; famTouched[r.familyId]=1;} });
-  statsEl.innerHTML = '<b>'+reg+'</b> / '+ROWS.length+' registered &middot; '
-    + Object.keys(famTouched).length+'/'+Object.keys(fam).length+' families';
+  var e=curEvent(); var nm=e?e.name:'';
+  if(!ROWS.length){ statsEl.textContent=(nm?nm+' - ':'')+'tap refresh'; return; }
+  var reg=0,f={},tf={};
+  ROWS.forEach(function(r){ f[r.familyId]=1; if(r.registered){reg++; tf[r.familyId]=1;} });
+  statsEl.innerHTML=(nm?esc(nm)+': ':'')+'<b>'+reg+'</b> / '+ROWS.length+' registered &middot; '
+    +Object.keys(tf).length+'/'+Object.keys(f).length+' families';
 }
 
-function famBadge(reg, total){
+// ---- Search + render ----
+function famBadge(reg,total){
   if(reg===0) return '<span class="badge b-none">Not done</span>';
   if(reg>=total) return '<span class="badge b-done">&#10003; Done</span>';
   return '<span class="badge b-part">'+reg+'/'+total+'</span>';
 }
-
 function renderResults(results){
   if(!results.length){ listEl.innerHTML='<div class="empty">No devotee found.</div>'; return; }
   var html='';
   results.forEach(function(f){
-    html += '<div class="fam" data-fam="'+esc(f.familyId)+'">';
-    html += '<div class="fam-head"><div class="fam-main">'
-      + '<div class="fam-name">'+esc(f.primaryName)+'</div>'
-      + '<div class="fam-sub">'+(f.mobile?('&#128241; '+esc(f.mobile)+' &middot; '):'')
-      + esc(f.mandal)+' &middot; '+f.count+' member'+(f.count>1?'s':'')+'</div>'
-      + '</div>'+famBadge(f.registeredCount,f.count)+'</div>';
-    html += '<div class="members">';
+    html+='<div class="fam" data-fam="'+esc(f.familyId)+'"><div class="fam-head"><div class="fam-main">'
+      +'<div class="fam-name">'+esc(f.primaryName)+'</div>'
+      +'<div class="fam-sub">'+(f.mobile?('&#128241; '+esc(f.mobile)+' &middot; '):'')
+      +esc(f.mandal)+' &middot; '+f.count+' member'+(f.count>1?'s':'')+'</div></div>'
+      +famBadge(f.registeredCount,f.count)+'</div><div class="members">';
     f.members.forEach(function(m){
-      html += '<div class="m" data-sno="'+esc(m.sno)+'">'
-        + '<div class="chk '+(m.registered?'on':'')+'">'+(m.registered?'&#10003;':'')+'</div>'
-        + '<div class="m-info"><div class="m-name">'+esc(m.name)+'</div>'
-        + '<div class="m-meta"><span class="rel">'+esc(m.relation)+'</span>'
-        + (m.gender?(' &middot; '+esc(m.gender)):'')
-        + (m.registeredBy?(' &middot; by '+esc(m.registeredBy)):'')+'</div></div></div>';
+      html+='<div class="m" data-sno="'+esc(m.sno)+'"><div class="chk '+(m.registered?'on':'')+'">'
+        +(m.registered?'&#10003;':'')+'</div><div class="m-info"><div class="m-name">'+esc(m.name)+'</div>'
+        +'<div class="m-meta"><span class="rel">'+esc(m.relation)+'</span>'
+        +(m.gender?(' &middot; '+esc(m.gender)):'')
+        +(m.registeredBy?(' &middot; by '+esc(m.registeredBy)):'')+'</div></div></div>';
     });
-    html += '</div>';
-    var allDone = f.registeredCount>=f.count;
-    html += '<div class="actions">'
-      + '<button class="act act-all" data-scope="family" data-value="'+(allDone?'no':'yes')+'">'
-      + (allDone?'Undo whole family':'&#10003; Mark whole family')+'</button>'
-      + '</div></div>';
+    var allDone=f.registeredCount>=f.count;
+    html+='</div><div class="actions"><button class="act act-all" data-value="'+(allDone?'no':'yes')+'">'
+      +(allDone?'Undo whole family':'&#10003; Mark whole family')+'</button></div></div>';
   });
-  listEl.innerHTML = html;
+  listEl.innerHTML=html;
 }
-
-function norm(s){ return String(s==null?'':s).toLowerCase().replace(/\s+/g,' ').trim(); }
 
 var lastQuery='';
 function doSearch(q){
   lastQuery=q;
   if(!q.trim()){ listEl.innerHTML='<div class="empty">Type a name or mobile number to search.</div>'; return; }
   if(!ROWS.length){ listEl.innerHTML='<div class="empty">Loading data... tap refresh if this stays.</div>'; return; }
-  var nq = norm(q), digits = nq.replace(/\D/g,'');
-  // find matching family ids
-  var famHit = {};
-  for(var i=0;i<ROWS.length;i++){
-    var r = ROWS[i];
-    var nameHit = norm(r.name).indexOf(nq) !== -1;
-    var mobHit = digits.length>=3 && String(r.mobile).replace(/\D/g,'').indexOf(digits) !== -1;
-    if(nameHit || mobHit) famHit[r.familyId]=1;
-  }
-  // build full families for hits
-  var groups = {};
-  for(var j=0;j<ROWS.length;j++){ var x=ROWS[j];
-    if(famHit[x.familyId]) (groups[x.familyId]=groups[x.familyId]||[]).push(x); }
-  var results = [];
-  for(var fid in groups){
-    var m = groups[fid];
-    var primary = m.filter(function(a){return a.type==='Primary';})[0] || m[0];
-    results.push({ familyId:fid, primaryName:primary.name, mobile:primary.mobile,
-      mandal:primary.mandal, count:m.length,
-      registeredCount:m.filter(function(a){return a.registered;}).length, members:m });
-  }
-  results.sort(function(a,b){ return a.primaryName.localeCompare(b.primaryName); });
+  var nq=norm(q), digits=nq.replace(/\D/g,''), hit={};
+  for(var i=0;i<ROWS.length;i++){ var r=ROWS[i];
+    if(norm(r.name).indexOf(nq)!==-1 || (digits.length>=3 && String(r.mobile).replace(/\D/g,'').indexOf(digits)!==-1)) hit[r.familyId]=1; }
+  var groups={};
+  for(var j=0;j<ROWS.length;j++){ var x=ROWS[j]; if(hit[x.familyId]) (groups[x.familyId]=groups[x.familyId]||[]).push(x); }
+  var results=[];
+  for(var fid in groups){ var m=groups[fid]; var pr=m.filter(function(a){return a.type==='Primary';})[0]||m[0];
+    results.push({familyId:fid, primaryName:pr.name, mobile:pr.mobile, mandal:pr.mandal, count:m.length,
+      registeredCount:m.filter(function(a){return a.registered;}).length, members:m}); }
+  results.sort(function(a,b){return a.primaryName.localeCompare(b.primaryName);});
   renderResults(results);
 }
 
 var t;
-$('#q').addEventListener('input', function(e){
-  clearTimeout(t); var v=e.target.value; t=setTimeout(function(){ doSearch(v); }, 300);
-});
+$('#q').addEventListener('input', function(e){ clearTimeout(t); var v=e.target.value; t=setTimeout(function(){doSearch(v);},300); });
 
-function applyLocal(pred, on, by){
-  var at = new Date().toISOString().slice(0,16).replace('T',' ');
-  ROWS.forEach(function(r){ if(pred(r)){
-    r.registered = on; r.registeredBy = on?by:''; r.registeredAt = on?at:''; } });
+// ---- Marking ----
+function applyLocal(pred,on,by){
+  var at=new Date().toISOString().slice(0,16).replace('T',' ');
+  ROWS.forEach(function(r){ if(pred(r)){ r.registered=on; r.registeredBy=on?by:''; r.registeredAt=on?at:''; } });
   saveCache(); updateStats(); doSearch(lastQuery);
 }
-
 listEl.addEventListener('click', function(e){
-  var sevak = LS.sevak;
+  var sevak=LS.sevak;
   if(!sevak){ openSettings(); toast('Please enter your name first'); return; }
-  var actBtn = e.target.closest('.act');
+  var ev=curEvent();
+  var actBtn=e.target.closest('.act');
   if(actBtn){
-    var fam = actBtn.closest('.fam').getAttribute('data-fam');
-    var value = actBtn.getAttribute('data-value'); var on = value==='yes';
-    applyLocal(function(r){ return r.familyId===fam; }, on, sevak); // instant
+    var on=actBtn.getAttribute('data-value')==='yes';
+    if(on && ev && ev.status!=='open'){ toast('Registration is closed for this event'); return; }
+    var fam=actBtn.closest('.fam').getAttribute('data-fam');
+    applyLocal(function(r){return r.familyId===fam;}, on, sevak);
     toast(on?'Family registered':'Family unmarked');
-    api({action:'register', familyId:fam, scope:'family', value:value, by:sevak})
+    api({action:'register', eventId:LS.event, familyId:fam, scope:'family', value:on?'yes':'no', by:sevak})
       .then(function(d){ if(!d.ok) throw new Error(d.error||'Error'); })
-      .catch(function(err){ toast('Not saved online: '+err.message); });
+      .catch(function(err){ toast('Not saved: '+err.message); });
     return;
   }
-  var row = e.target.closest('.m');
+  var row=e.target.closest('.m');
   if(row){
-    var sno = row.getAttribute('data-sno');
-    var cur = BY_SNO[sno]; var on = !(cur && cur.registered);
-    applyLocal(function(r){ return String(r.sno)===String(sno); }, on, sevak); // instant
-    toast(on?'Registered':'Unmarked');
-    api({action:'register', sno:sno, value: on?'yes':'no', by:sevak})
+    var sno=row.getAttribute('data-sno'); var cur=BY_SNO[sno]; var on2=!(cur&&cur.registered);
+    if(on2 && ev && ev.status!=='open'){ toast('Registration is closed for this event'); return; }
+    applyLocal(function(r){return String(r.sno)===String(sno);}, on2, sevak);
+    toast(on2?'Registered':'Unmarked');
+    api({action:'register', eventId:LS.event, sno:sno, value:on2?'yes':'no', by:sevak})
       .then(function(d){ if(!d.ok) throw new Error(d.error||'Error'); })
-      .catch(function(err){ toast('Not saved online: '+err.message); });
+      .catch(function(err){ toast('Not saved: '+err.message); });
   }
 });
 
-var dlg = $('#settings');
-var _dlgOpen=false;
-function openSettings(){
-  if(_dlgOpen) return; _dlgOpen=true;
-  $('#sevakName').value=LS.sevak; $('#pinCode').value=LS.pin;
-  $('#apiUrl').value=(localStorage.getItem('apiUrl')||'');
-  dlg.showModal();
-}
+// ---- Event switching ----
+$('#eventSel').addEventListener('change', function(e){
+  LS.event=e.target.value; showEventStatus(); loadFromCache(); updateStats();
+  if(lastQuery) doSearch(lastQuery); fetchAll(false);
+});
+$('#refresh').addEventListener('click', function(){ loadEvents().then(function(){ showEventStatus(); return fetchAll(true); }); });
+
+// ---- Settings ----
+var dlg=$('#settings'), _open=false;
+function openSettings(){ if(_open) return; _open=true;
+  $('#sevakName').value=LS.sevak; $('#pinCode').value=LS.pin; $('#adminCode').value=LS.adminPin;
+  $('#apiUrl').value=(localStorage.getItem('apiUrl')||''); dlg.showModal(); }
 $('#gear').addEventListener('click', openSettings);
-$('#cancelSet').addEventListener('click', function(){ dlg.close(); _dlgOpen=false; });
+$('#cancelSet').addEventListener('click', function(){ dlg.close(); _open=false; });
 $('#saveSet').addEventListener('click', function(){
-  LS.sevak = $('#sevakName').value.trim();
-  LS.pin = $('#pinCode').value.trim();
-  var u = $('#apiUrl').value.trim(); if(u) LS.api=u;
-  dlg.close(); _dlgOpen=false; refreshWho(); fetchAll(true);
+  LS.sevak=$('#sevakName').value.trim(); LS.pin=$('#pinCode').value.trim(); LS.adminPin=$('#adminCode').value.trim();
+  var u=$('#apiUrl').value.trim(); if(u) LS.api=u;
+  dlg.close(); _open=false; refreshWho();
+  loadEvents().then(function(){ return fetchAll(true); });
   toast('Saved');
 });
+function refreshWho(){ $('#who').textContent=LS.sevak?('Sevak: '+LS.sevak):'Tap the gear icon and enter your name to start'; }
 
-$('#refresh').addEventListener('click', function(){ fetchAll(true); });
-
-function refreshWho(){
-  $('#who').textContent = LS.sevak ? ('Sevak: '+LS.sevak) : 'Tap the gear icon and enter your name to start';
+// ---- Manage events (admin) ----
+var evDlg=$('#eventsDlg');
+$('#manageEventsBtn').addEventListener('click', function(){
+  LS.adminPin=$('#adminCode').value.trim();
+  if(!LS.adminPin){ toast('Enter the admin code first'); return; }
+  renderEvList(); evDlg.showModal();
+});
+function renderEvList(){
+  var host=$('#evList');
+  if(!EVENTS.length){ host.innerHTML='<p>No events yet.</p>'; return; }
+  host.innerHTML=EVENTS.map(function(e){
+    return '<div class="evrow"><div class="en"><b>'+esc(e.name)+'</b><span>'+esc(e.date||'')
+      +' &middot; '+e.registered+' registered</span></div>'
+      +'<button class="tgl '+(e.status==='open'?'open':'closed')+'" data-ev="'+esc(e.eventId)+'" data-st="'+e.status+'">'
+      +(e.status==='open'?'Open':'Closed')+'</button></div>';
+  }).join('');
 }
+$('#evList').addEventListener('click', function(e){
+  var b=e.target.closest('.tgl'); if(!b) return;
+  var id=b.getAttribute('data-ev'); var next=b.getAttribute('data-st')==='open'?'closed':'open';
+  b.disabled=true;
+  api({action:'setEventStatus', eventId:id, status:next}).then(function(d){
+    if(!d.ok) throw new Error(d.error||'Error');
+    toast('Event '+next); return loadEvents();
+  }).then(function(){ renderEvList(); showEventStatus(); updateStats(); })
+    .catch(function(err){ toast(err.message); b.disabled=false; });
+});
+$('#evClose').addEventListener('click', function(){ evDlg.close(); });
+$('#evAdd').addEventListener('click', function(){
+  var name=$('#newEvName').value.trim(), date=$('#newEvDate').value;
+  if(!name){ toast('Enter event name'); return; }
+  var btn=$('#evAdd'); btn.disabled=true; btn.textContent='Adding...';
+  api({action:'addEvent', name:name, date:date}).then(function(d){
+    if(!d.ok) throw new Error(d.error||'Error');
+    $('#newEvName').value=''; $('#newEvDate').value=''; LS.event=d.eventId;
+    toast('Event added'); return loadEvents();
+  }).then(function(){ renderEvList(); loadFromCache(); updateStats(); fetchAll(false); })
+    .catch(function(err){ toast(err.message); })
+    .then(function(){ btn.disabled=false; btn.textContent='Add event'; });
+});
 
-// ---- Init: show cached data instantly, then refresh in background ----
+// ---- Init ----
 refreshWho();
-loadFromCache();     // instant if we have it
-updateStats();
-fetchAll(false);     // refresh silently
+loadFromCache(); updateStats();
+if(LS.pin){
+  loadEvents().then(function(){ loadFromCache(); updateStats(); if(lastQuery) doSearch(lastQuery); return fetchAll(false); });
+}
 if(!LS.sevak || !LS.pin) setTimeout(openSettings, 400);
 </script>
 </body>
